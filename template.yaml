@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Função Lambda GerarRelatorioSemanal em Quarkus. Todo domingo às 23h calcula a média das avaliações dos últimos 7 dias e grava na TbRelatorio.
+
+Parameters:
+  DbUrl:
+    Type: String
+    Default: jdbc:mysql://proxy-1794678308622-auditcursos.proxy-cudwck26ucl1.us-east-1.rds.amazonaws.com:3306/AUDITCURSOS
+    Description: URL JDBC do MySQL do banco AUDITCURSOS
+  DbUser:
+    Type: String
+    Default: admin
+    Description: Usuário do MySQL
+  DbPassword:
+    Type: String
+    NoEcho: true
+    Default: "Gabrira#1234"
+    Description: Senha do MySQL
+
+Resources:
+  GerarRelatorioSemanal:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: GerarRelatorioSemanal
+      Architectures:
+        - x86_64
+      CodeUri: target/function.zip
+      Description: Gera a média semanal das avaliações e grava na TbRelatorio
+      EphemeralStorage:
+        Size: 512
+      Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler
+      LoggingConfig:
+        LogFormat: Text
+        LogGroup: /aws/lambda/GerarRelatorioSemanal
+      MemorySize: 1024
+      PackageType: Zip
+      RecursiveLoop: Terminate
+      Runtime: java21
+      RuntimeManagementConfig:
+        UpdateRuntimeOn: Auto
+      SnapStart:
+        ApplyOn: PublishedVersions
+      Timeout: 60
+      Tracing: PassThrough
+      Environment:
+        Variables:
+          QUARKUS_DATASOURCE_JDBC_URL: !Ref DbUrl
+          QUARKUS_DATASOURCE_USERNAME: !Ref DbUser
+          QUARKUS_DATASOURCE_PASSWORD: !Ref DbPassword
+      VpcConfig:
+        Ipv6AllowedForDualStack: false
+        SecurityGroupIds:
+          - sg-03385b8d361eef251
+        SubnetIds:
+          - subnet-08fa98d42391e19e3
+          - subnet-0809b9ab2c63db499
+          - subnet-0501ccbe035180f7b
+          - subnet-083c29e3d5b6f42b2
+          - subnet-0d9904b4198639882
+          - subnet-08e9454db5c0d67dd
+      Role: arn:aws:iam::307946675964:role/service-role/GerarRelatorioSemanal-role-q4umrd92
+      Events:
+        DomingoNoite:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: cron(0 23 ? * SUN *)
+            ScheduleExpressionTimezone: America/Sao_Paulo
+            Name: GerarRelatorioSemanalDomingo
+            Description: Gera a média semanal todo domingo às 23h
+            FlexibleTimeWindow:
+              Mode: "OFF"
